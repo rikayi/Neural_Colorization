@@ -1,0 +1,137 @@
+from base.base_train import BaseTrain
+from tqdm import tqdm
+import os
+
+import tensorflow as tf
+import numpy as np
+from skimage.color import lab2rgb
+from skimage.io import imsave
+
+from utils.metrics import AverageMeter
+
+
+class ColorizationTrainer(BaseTrain):
+    def __init__(self, sess, model, config, logger, data_loader):
+        """
+        Constructing trainer based on the Base Train..
+        Here is the pipeline of constructing
+        - Assign sess, model, config, logger, data_generators(if_specified)
+        - Initialize all variables
+        - Load the latest checkpoint
+        - Create the summarizer
+        - Get the nodes we will need to run it from the graph
+        :param sess:
+        :param model:
+        :param config:
+        :param logger:
+        :param data_loader:
+        """
+
+        super(ColorizationTrainer, self).__init__(sess, model, config, logger, data_loader)
+
+        # load the model from the latest checkpoint
+        self.model.load(self.sess)
+
+        # Summarizer
+        self.summarizer = logger
+
+        self.x, self.y, self.inception_embed, self.is_training = tf.get_collection('inputs')
+        self.train_op, self.loss_node = tf.get_collection('train')
+        self.out = tf.get_collection('out')
+    
+    def train(self):
+        """
+        This is the main loop of training
+        Looping on the epochs
+        :return:
+        """
+        for cur_epoch in range(self.model.cur_epoch_tensor.eval(self.sess), self.config.num_epochs + 1, 1):
+            self.train_epoch(cur_epoch)
+            self.sess.run(self.model.increment_cur_epoch_tensor)
+            self.test(cur_epoch)
+
+    def train_epoch(self, epoch=None):
+        """
+        Train one epoch
+        :param epoch: cur epoch number
+        :return:
+        """
+        # initialize dataset
+        self.data_loader.initialize(self.sess, mode='train')
+
+        # initialize tqdm
+        tt = tqdm(range(self.data_loader.num_iterations_train), total=self.data_loader.num_iterations_train,
+                  desc="epoch-{}-".format(epoch))
+
+        loss_per_epoch = AverageMeter()
+
+        # Iterate over batches
+        for cur_it in tt:
+            # One Train step on the current batch
+            loss = self.train_step()
+            # update metrics returned from train_step func
+            loss_per_epoch.update(loss)
+
+        self.sess.run(self.model.global_epoch_inc)
+
+        # summarize
+        summaries_dict = {'train/loss_per_epoch': loss_per_epoch.val}
+        self.summarizer.summarize(self.model.global_step_tensor.eval(self.sess), summaries_dict)
+
+        self.model.save(self.sess)
+        
+        print("""
+Epoch-{}  loss:{:.4f}
+        """.format(epoch, loss_per_epoch.val))
+
+        tt.close()
+
+    def train_step(self):
+        """
+        Run the session of train_step in tensorflow
+        also get the loss & acc of that minibatch.
+        :return: (loss, acc) tuple of some metrics to be used in summaries
+        """
+        _, loss = self.sess.run([self.train_op, self.loss_node],
+                                     feed_dict={self.is_training: True})
+        return loss
+    
+    def test(self, epoch):
+        # initialize dataset
+        self.data_loader.initialize(self.sess, mode='test')
+
+        # initialize tqdm
+        tt = tqdm(range(self.data_loader.num_iterations_test), total=self.data_loader.num_iterations_test,
+                  desc="Val-{}-".format(epoch))
+
+        loss_per_epoch = AverageMeter()
+        # Iterate over batches
+        for cur_it in tt:
+            # One Train step on the current batch
+            loss,out,color_me = self.sess.run([self.loss_node,self.out,self.x],
+                                     feed_dict={self.is_training: False})
+            # update metrics returned from train_step func
+            loss_per_epoch.update(loss)
+
+            out=np.array(out).reshape([-1,self.config.image_size,self.config.image_size,2])*128
+            color_me=np.array(color_me).reshape([-1,self.config.image_size,self.config.image_size])
+            
+            #save test images for debug
+            if epoch%5==0:
+                if not os.path.exists("../results/epoch"+str(epoch)):
+                    os.makedirs("../results/epoch"+str(epoch))
+                for i in range(len(out)):
+                    cur = np.zeros((self.config.image_size, self.config.image_size, 3))
+                    cur[:,:,0] = color_me[i]
+                    cur[:,:,1:] = out[i]
+                    imsave("../results/epoch"+str(epoch)+"/img_"+str(i)+"epoch"+str(epoch)+".png", lab2rgb(cur))
+
+        # summarize
+        summaries_dict = {'test/loss_per_epoch': loss_per_epoch.val}
+        self.summarizer.summarize(self.model.global_step_tensor.eval(self.sess), summaries_dict)
+        
+        print("""
+Val-{}  loss:{:.4f}
+        """.format(epoch, loss_per_epoch.val))
+
+        tt.close()

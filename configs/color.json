@@ -1,0 +1,18 @@
+{
+  "exp_name": "colorization_1",
+
+  "image_size": 256,
+  "image_depth": 3,
+
+  "batch_size": 50,
+  "num_epochs": 1000,
+
+  "learning_rate": 1e-4,
+
+  "max_to_keep": 2,
+
+  "use_random_flip": true,
+
+  "num_parallel_calls": 4,
+  "save_summary_steps": 1
+}
