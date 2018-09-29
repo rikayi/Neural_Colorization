@@ -35,7 +35,7 @@ class ColorizationTrainer(BaseTrain):
         # Summarizer
         self.summarizer = logger
 
-        self.x, self.y, self.inception_embed, self.is_training = tf.get_collection('inputs')
+        self.x, self.y, self.inception_embed = tf.get_collection('inputs')
         self.train_op, self.loss_node = tf.get_collection('train')
         self.out = tf.get_collection('out')
     
@@ -89,11 +89,10 @@ Epoch-{}  loss:{:.4f}
     def train_step(self):
         """
         Run the session of train_step in tensorflow
-        also get the loss & acc of that minibatch.
-        :return: (loss, acc) tuple of some metrics to be used in summaries
+        also get the loss of that minibatch.
+        :return: loss to be used in summaries
         """
-        _, loss = self.sess.run([self.train_op, self.loss_node],
-                                     feed_dict={self.is_training: True})
+        _, loss = self.sess.run([self.train_op, self.loss_node])
         return loss
     
     def test(self, epoch):
@@ -107,16 +106,16 @@ Epoch-{}  loss:{:.4f}
         loss_per_epoch = AverageMeter()
         # Iterate over batches
         for cur_it in tt:
-            # One Train step on the current batch
-            loss,out,color_me = self.sess.run([self.loss_node,self.out,self.x],
-                                     feed_dict={self.is_training: False})
+            # One step on the current batch
+            loss,out,color_me = self.sess.run([self.loss_node,self.out,self.x])
             # update metrics returned from train_step func
             loss_per_epoch.update(loss)
 
-            out=np.array(out).reshape([-1,self.config.image_size,self.config.image_size,2])*128
-            color_me=np.array(color_me).reshape([-1,self.config.image_size,self.config.image_size])
+            #reconstruct colorized images and save them
+            out = np.array(out).reshape([-1,self.config.image_size,self.config.image_size,2])*128
+            color_me = np.array(color_me).reshape([-1,self.config.image_size,self.config.image_size])
             
-            #save test images for debug
+
             if epoch%5==0:
                 if not os.path.exists("../results/epoch"+str(epoch)):
                     os.makedirs("../results/epoch"+str(epoch))

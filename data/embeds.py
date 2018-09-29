@@ -25,7 +25,7 @@ def main():
     train_dir = os.path.join('Dataset', 'Train')
     test_dir = os.path.join('Dataset', 'Test')
 
-        # Get the file names from the train and dev sets
+    # Get the file names from the train and dev sets
     train_filenames = np.array([os.path.join(train_dir, f) for f in os.listdir(train_dir) if f.endswith('.jpg')])
     test_filenames  = np.array([os.path.join(test_dir, f)  for f in os.listdir(test_dir)  if f.endswith('.jpg')])
 
@@ -35,10 +35,9 @@ def main():
     inception.graph = tf.get_default_graph()
     print('Weights loaded')
 
-    #calculate embeddings here
-    #todo: calculate embeds in diifferent script
-    train_embeds=create_inception_embedding(train_filenames, inception)
-    test_embeds=create_inception_embedding(test_filenames, inception)
+    #calculate embeddings
+    train_embeds = create_inception_embedding(train_filenames, inception)
+    test_embeds = create_inception_embedding(test_filenames, inception)
     np.save('train_embeds',train_embeds)
     np.save('test_embeds', test_embeds)
 

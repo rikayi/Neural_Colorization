@@ -38,7 +38,6 @@ class DataLoader:
         self.num_iterations_test  = (self.test_size  + self.config.batch_size - 1) // self.config.batch_size
 
         self.features_placeholder = None
-        self.labels_placeholder = None
 
         self.dataset = None
         self.iterator = None
@@ -85,13 +84,7 @@ class DataLoader:
             if use_random_flip:
                 image = tf.image.random_flip_left_right(image)
 
-            
-
-            # Make sure the image is still in [0, 1]
-            image = tf.clip_by_value(image, 0.0, 1.0)
-        
-
-
+        # convert image to LAB space and divide into features(L channel) and labels(AB channels)
         lab=rgb_to_lab(image)
         image=lab[:,:,0,None]
         label=lab[:,:,1:]/128

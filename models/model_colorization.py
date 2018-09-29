@@ -11,7 +11,6 @@ class ColorModel(BaseModel):
         self.x = None
         self.y = None
         self.inception_embed=None
-        self.is_training = None
         self.loss = None
         self.optimizer = None
         self.train_step = None
@@ -39,12 +38,10 @@ class ColorModel(BaseModel):
         """
         with tf.variable_scope('inputs'):
             self.x, self.y, self.inception_embed = self.data_loader.get_inputs()
-            self.is_training = tf.placeholder(tf.bool, name='Training_flag')
             
         tf.add_to_collection('inputs', self.x)
         tf.add_to_collection('inputs', self.y)
         tf.add_to_collection('inputs', self.inception_embed)
-        tf.add_to_collection('inputs', self.is_training)
 
         """
         Network Architecture

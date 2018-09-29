@@ -33,7 +33,7 @@ def main():
 
     # Create tensorflow session and limit gpu usage
     conf = tf.ConfigProto()
-    conf.gpu_options.allow_growth=True
+    conf.gpu_options.allow_growth = True
     sess = tf.Session(config=conf)
 
     # create your data generator
